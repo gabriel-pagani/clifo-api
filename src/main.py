@@ -6,6 +6,7 @@ from typing import Optional
 from database.connection import execute_query
 from utils.validator import is_valid_cnpj
 from apis.receitaws import cnpj_lookup
+from apis.customer_vendor import register_new_customer_vendor
 
 app = FastAPI(title="CliFo API", description="API for simplified customer and supplier registration in Totvs RM")
 
@@ -47,6 +48,51 @@ def register_cnpj(request: RegisterRequest):
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+    results = []
+    errors = []
+    
+    for idx in ["1", "5", "6"]:
+        try:
+            result = register_new_customer_vendor(
+                companyId=idx,
+                code=resp["code"],
+                shortName=resp["shortName"],
+                name=resp["name"],
+                type=resp["type"],
+                mainNIF=resp["mainNIF"],
+                stateRegister=resp["stateRegister"],
+                zipCode=resp["zipCode"],
+                streetType=resp["streetType"],
+                streetName=resp["streetName"],
+                number=resp["number"],
+                complement=resp["complement"],
+                districtType=resp["districtType"],
+                district=resp["district"],
+                stateCode=resp["stateCode"],
+                cityInternalId=resp["cityInternalId"],
+                phoneNumber=resp["phoneNumber"],
+                email=resp["email"],
+                contributor=resp["contributor"]
+            )
+            results.append({
+                "companyId": idx,
+                "status": "processed",
+                "details": result
+            })
+
+        except Exception as e:
+            errors.append({
+                "companyId": idx,
+                "status": "failed",
+                "details": str(e)
+            })
+            
+    return {
+        "message": "Processing complete", 
+        "successes": results,
+        "failures": errors
+    }
 
 
 if __name__ == "__main__":
