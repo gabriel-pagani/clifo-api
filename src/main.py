@@ -22,11 +22,11 @@ def register_cnpj(request: RegisterRequest):
         valid_types = ['C', 'F', 'A']
         clean_type = request.cnpj_type.upper().strip()
         if clean_type not in valid_types:
-            raise ValueError(f"Invalid CNPJ type. Must be one of: {valid_types}")
+            return {"success": False, "status": "validation_error", "message": f"Invalid CNPJ type. Must be one of: {valid_types}"}
 
         clean_cnpj = re.sub(r'\D', '', request.cnpj)
         if not is_valid_cnpj(clean_cnpj):
-            raise ValueError("Invalid CNPJ")
+            return {"success": False, "status": "validation_error", "message": "Invalid CNPJ"}
 
         if request.ie and 'isento' in request.ie.strip().lower():
             clean_ie = 'isento'
@@ -38,24 +38,23 @@ def register_cnpj(request: RegisterRequest):
         cnpj_exists = execute_query(query)
         if cnpj_exists:
             existing_code = cnpj_exists[0][0]
-            raise HTTPException(
-                status_code=409, 
-                detail={
-                    "message": "CNPJ already registered in the system",
-                    "codcfo": existing_code
-                }
-            )
+            return {
+                "success": True,
+                "status": "already_registered",
+                "message": "CNPJ already registered in the system",
+                "codcfo": existing_code,
+                "success_data": [],
+                "failed_data": []
+            }
 
         resp = cnpj_lookup(cnpj_type=clean_type, cnpj=clean_cnpj, ie=clean_ie)
         if resp.get("status", "").upper() != "ATIVA":
-            raise ValueError(f"CNPJ is not active. Current status: {resp.get('status', 'UNKNOWN')}")
+            return {"success": False, "status": "validation_error","message": f"CNPJ is not active. Current status: {resp.get('status', 'UNKNOWN')}"}
 
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        return {"success": False, "status": "external_api_error", "message": f"{str(e)}"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"success": False, "status": "internal_error", "message": f"{str(e)}"}
     
     results = []
     errors = []
@@ -97,6 +96,8 @@ def register_cnpj(request: RegisterRequest):
             })
             
     return {
+        "success": True,
+        "status": "processed",
         "message": "Processing complete", 
         "codcfo": resp["code"],
         "successes": results,
