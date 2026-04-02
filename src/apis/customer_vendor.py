@@ -2,9 +2,10 @@ import os
 import requests
 from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv
+from database.connection import execute_query
 
 
-def create_new_customer_vendor(
+def register_new_customer_vendor(
         companyId: str,
         code: str,
         shortName: str,
@@ -16,6 +17,7 @@ def create_new_customer_vendor(
         streetType: str,
 		streetName: str,
 		number: str,
+        complement: str,
 		districtType: str,
 		district: str,
 		stateCode: str,
@@ -80,3 +82,13 @@ def create_new_customer_vendor(
     
     resp = session.post(api_url, json=json, timeout=30)
     resp.raise_for_status()
+
+    execute_query(
+        "UPDATE FCFO SET CONTRIBUINTE = ?, COMPLEMENTO = ? WHERE CODCOLIGADA = ? AND CGCCFO = ?", 
+        (
+            contributor,
+            complement if complement else None, 
+            companyId,
+            mainNIF
+        )
+    )
