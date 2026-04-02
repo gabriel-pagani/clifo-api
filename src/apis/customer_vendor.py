@@ -83,5 +83,5 @@ def register_new_customer_vendor(
     resp = session.post(api_url, json=json, timeout=30)
     resp.raise_for_status()
 
-    query = f"UPDATE FCFO SET CONTRIBUINTE = {contributor}, COMPLEMENTO = {(f"'{complement.replace("'", "")}'" if complement else "Null")} WHERE CODCOLIGADA = {companyId} AND CGCCFO = '{mainNIF}'"
+    query = f"UPDATE FCFO SET CONTRIBUINTE = {contributor}, COMPLEMENTO = {(f"'{complement.replace("'", "").replace('"', '')}'" if complement else "Null")} WHERE CODCOLIGADA = {companyId} AND CGCCFO = '{mainNIF}'"
     execute_query(query)
