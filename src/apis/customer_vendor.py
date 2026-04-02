@@ -79,9 +79,12 @@ def register_new_customer_vendor(
             "codcfo": code
         }
     }
-    
-    resp = session.post(api_url, json=json, timeout=30)
-    resp.raise_for_status()
 
-    query = f"UPDATE FCFO SET CONTRIBUINTE = {contributor}, COMPLEMENTO = {(f"'{complement.replace("'", "").replace('"', '')}'" if complement else "Null")} WHERE CODCOLIGADA = {companyId} AND CGCCFO = '{mainNIF}'"
-    execute_query(query)
+    try:
+        resp = session.post(api_url, json=json, timeout=30)
+        resp.raise_for_status()
+
+        query = f"UPDATE FCFO SET CONTRIBUINTE = {contributor}, COMPLEMENTO = {(f"'{complement.replace("'", "").replace('"', '')}'" if complement else "Null")} WHERE CODCOLIGADA = {companyId} AND CGCCFO = '{mainNIF}'"
+        execute_query(query)
+    except Exception:
+        return resp.text
