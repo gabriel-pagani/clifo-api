@@ -1,12 +1,13 @@
 import uvicorn
 import re
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
 from database.connection import execute_query
 from utils.validator import is_valid_cnpj
 from apis.receitaws import cnpj_lookup
 from apis.customer_vendor import register_new_customer_vendor
+from utils.auth import get_api_key
 
 app = FastAPI(title="CliFo API", description="API for simplified customer and supplier registration in Totvs RM")
 
@@ -15,7 +16,7 @@ class RegisterRequest(BaseModel):
     cnpj: str
     ie: Optional[str] = ""
 
-@app.post("/register")
+@app.post("/register", dependencies=[Depends(get_api_key)])
 def register_cnpj(request: RegisterRequest):
     try:
         valid_types = ['C', 'F', 'A']
