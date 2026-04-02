@@ -1,13 +1,12 @@
 import uvicorn
+import re
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from apis.receitaws import cnpj_lookup
-from apis.customer_vendor import register_new_customer_vendor
-
+from database.connection import execute_query
+from utils.validator import is_valid_cnpj
 
 app = FastAPI(title="CliFo API", description="API for simplified customer and supplier registration in Totvs RM")
-
 
 class RegisterRequest(BaseModel):
     cnpj_type: str
@@ -17,44 +16,27 @@ class RegisterRequest(BaseModel):
 @app.post("/register")
 def register_cnpj(request: RegisterRequest):
     try:
-        results = []
-        
-        resp = cnpj_lookup(cnpj_type=request.cnpj_type, cnpj=request.cnpj, ie=request.ie)
-        
-        for idx in ["1", "5", "6"]:
-            result = register_new_customer_vendor(
-                companyId=idx,
-                code=resp["code"],
-                shortName=resp["shortName"],
-                name=resp["name"],
-                type=resp["type"],
-                mainNIF=resp["mainNIF"],
-                stateRegister=resp["stateRegister"],
-                zipCode=resp["zipCode"],
-                streetType=resp["streetType"],
-                streetName=resp["streetName"],
-                number=resp["number"],
-                complement=resp["complement"],
-                districtType=resp["districtType"],
-                district=resp["district"],
-                stateCode=resp["stateCode"],
-                cityInternalId=resp["cityInternalId"],
-                phoneNumber=resp["phoneNumber"],
-                email=resp["email"],
-                contributor=resp["contributor"]
-            )
-            results.append({
-                "companyId": idx,
-                "status": "processed",
-                "details": result
-            })
-            
-        return {
-            "message": "Processing completed successfully", 
-            "data": results
-        }
+        valid_types = ['C', 'F', 'A']
+        clean_type = request.cnpj_type.upper().strip()
+        if clean_type not in valid_types:
+            raise ValueError(f"Invalid CNPJ type. Must be one of: {valid_types}")
 
-    except RuntimeError as e:
+        clean_cnpj = re.sub(r'\D', '', request.cnpj)
+        if not is_valid_cnpj(clean_cnpj):
+            raise ValueError("Invalid CNPJ")
+
+        if request.ie and 'isento' in request.ie.strip().lower():
+            clean_ie = 'isento'
+        else:
+            clean_ie = re.sub(r'\D', '', request.ie) if request.ie else ""
+
+        formatted_cnpj = f"{clean_cnpj[:2]}.{clean_cnpj[2:5]}.{clean_cnpj[5:8]}/{clean_cnpj[8:12]}-{clean_cnpj[12:]}"
+        query = f"SELECT TOP 1 CODCFO FROM FCFO WHERE CODCOLIGADA IN (1,5,6) AND CGCCFO = '{formatted_cnpj}'"
+        cnpj_exists = execute_query(query)
+        if cnpj_exists:
+            raise ValueError("CNPJ already registered in the system")
+            
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
