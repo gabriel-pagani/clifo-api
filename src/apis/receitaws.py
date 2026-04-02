@@ -13,8 +13,7 @@ from utils.formatter import (
 
 
 def cnpj_lookup(cnpj_type: str, cnpj: str, ie: str = ""):
-    formatted_cnpj = cnpj.replace(".", "").replace("/", "").replace("-", "").strip()
-    r = requests.get(f"https://receitaws.com.br/v1/cnpj/{formatted_cnpj}", timeout=30)
+    r = requests.get(f"https://receitaws.com.br/v1/cnpj/{cnpj}", timeout=30)
     r.raise_for_status()
     resp = r.json()
 
