@@ -37,7 +37,14 @@ def register_cnpj(request: RegisterRequest):
         query = f"SELECT TOP 1 CODCFO FROM FCFO WHERE CODCOLIGADA IN (1,5,6) AND CGCCFO = '{formatted_cnpj}'"
         cnpj_exists = execute_query(query)
         if cnpj_exists:
-            raise ValueError("CNPJ already registered in the system")
+            existing_code = cnpj_exists[0][0]
+            raise HTTPException(
+                status_code=409, 
+                detail={
+                    "message": "CNPJ already registered in the system",
+                    "codcfo": existing_code
+                }
+            )
 
         resp = cnpj_lookup(cnpj_type=clean_type, cnpj=clean_cnpj, ie=clean_ie)
         if resp.get("status", "").upper() != "ATIVA":
@@ -91,6 +98,7 @@ def register_cnpj(request: RegisterRequest):
             
     return {
         "message": "Processing complete", 
+        "codcfo": resp["code"],
         "successes": results,
         "failures": errors
     }
