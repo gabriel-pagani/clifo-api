@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_connection() -> pyodbc.connect:
-    connection_string = f"DRIVER={{SQL Server}}; SERVER={os.getenv('SERVER_IP')}; DATABASE={os.getenv('SERVER_DATABASE')}; UID={os.getenv('SERVER_USER')}; PWD={os.getenv('SERVER_PWD')}"
+    connection_string = f"DRIVER={{ODBC Driver 18 for SQL Server}}; SERVER={os.getenv('SERVER_IP')}; DATABASE={os.getenv('SERVER_DATABASE')}; UID={os.getenv('SERVER_USER')}; PWD={os.getenv('SERVER_PWD')}"
     return pyodbc.connect(connection_string)
 
 
