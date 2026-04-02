@@ -1,4 +1,5 @@
 import requests
+from database.connection import execute_query
 from utils.formatter import (
     format_name, 
     suffix_remover, 
@@ -11,7 +12,7 @@ from utils.formatter import (
 )
 
 
-def cnpj_lookup(codcfo: str, cnpj: str, ie: str = ""):
+def cnpj_lookup(cnpj_type: str, cnpj: str, ie: str = ""):
     formatted_cnpj = cnpj.replace(".", "").replace("/", "").replace("-", "").strip()
     r = requests.get(f"https://receitaws.com.br/v1/cnpj/{formatted_cnpj}", timeout=30)
     r.raise_for_status()
@@ -20,12 +21,19 @@ def cnpj_lookup(codcfo: str, cnpj: str, ie: str = ""):
     if isinstance(resp, dict) and resp.get("status") == "ERROR":
         raise RuntimeError(resp.get("message"))
 
+    codes = execute_query("""
+        SELECT
+            'F' + RIGHT('00000' + CAST((CAST(SUBSTRING((SELECT TOP 1 CODCFO FROM FCFO WHERE CODCFO LIKE 'F%' AND CODCOLIGADA in (1,5,6) ORDER BY CODCFO DESC), 2, 5) AS INT) + 1) AS VARCHAR), 5),
+            'C' + RIGHT('00000' + CAST((CAST(SUBSTRING((SELECT TOP 1 CODCFO FROM FCFO WHERE CODCFO LIKE 'C%' AND CODCOLIGADA in (1,5,6) ORDER BY CODCFO DESC), 2, 5) AS INT) + 1) AS VARCHAR), 5)
+    """)[0]
+    codcfo = codes[1] if cnpj_type.upper() == "C" else codes[0]
+
     response = {
-        "status": resp["situacao"],
+        "status": resp["situacao"].title(),
         "code": codcfo,
         "shortName": suffix_remover(format_name(resp["fantasia"])) if resp["fantasia"] else suffix_remover(format_name(resp["nome"])),
         "name": format_name(resp["nome"]),
-        "type": 1 if codcfo.upper().startswith('C') else (2 if codcfo.upper().startswith('F') else 3),  # 1 = Cliente | 2 = Fornecedor | 3 = Ambos
+        "type": 1 if cnpj_type.upper() == 'C' else (2 if cnpj_type.upper() == 'F' else 3),  # 1 = Cliente | 2 = Fornecedor | 3 = Ambos
         "mainNIF": resp["cnpj"].strip(),
         "stateRegister": ie if ie and "isento" not in ie.lower() else "",
         "zipCode": format_zipcode(resp["cep"]),
