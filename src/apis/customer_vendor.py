@@ -84,7 +84,18 @@ def register_new_customer_vendor(
         resp = session.post(api_url, json=json, timeout=30)
         resp.raise_for_status()
 
-        query = f"UPDATE FCFO SET CONTRIBUINTE = {contributor}, COMPLEMENTO = {(f"'{complement.replace("'", "").replace('"', '')}'" if complement else "Null")} WHERE CODCOLIGADA = {companyId} AND CGCCFO = '{mainNIF}'"
+        complement = f"'{complement.replace(chr(39), '').replace('\"', '')}'" if complement else "Null"
+        query = f"UPDATE FCFO SET CONTRIBUINTE = {contributor}, COMPLEMENTO = {complement} WHERE CODCOLIGADA = {companyId} AND CGCCFO = '{mainNIF}'"
         execute_query(query)
-    except Exception:
-        return resp.text
+
+        return {"success": True, "message": "Registered successfully"}
+    
+    except requests.exceptions.HTTPError as e:
+        error_detail = resp.text if resp else str(e)
+        raise RuntimeError(f"Error in the RM API: {error_detail}")
+    
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"Communication failure with the RM API: {str(e)}")
+    
+    except Exception as e:
+        raise RuntimeError(f"Internal error: {str(e)}")
