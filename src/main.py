@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 from database.connection import execute_query
 from utils.validator import is_valid_cnpj
+from apis.receitaws import cnpj_lookup
 
 app = FastAPI(title="CliFo API", description="API for simplified customer and supplier registration in Totvs RM")
 
@@ -35,7 +36,11 @@ def register_cnpj(request: RegisterRequest):
         cnpj_exists = execute_query(query)
         if cnpj_exists:
             raise ValueError("CNPJ already registered in the system")
-            
+
+        resp = cnpj_lookup(cnpj_type=clean_type, cnpj=clean_cnpj, ie=clean_ie)
+        if resp.get("status", "").upper() != "ATIVA":
+            raise ValueError(f"CNPJ is not active. Current status: {resp.get('status', 'UNKNOWN')}")
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
